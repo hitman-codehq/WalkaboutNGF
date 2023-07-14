@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'locations.dart' as locations;
 
 void main() {
   runApp(const MyApp());
@@ -29,8 +30,7 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        //colorSchemeSeed: Colors.green[700],
+        colorSchemeSeed: Colors.green[700],
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'Maps Sample App'),
@@ -59,10 +59,28 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   late GoogleMapController mapController;
 
-  final LatLng _center = const LatLng(45.521563, -122.677433);
+  final LatLng _center = const LatLng(-27.242426, 153.016637);
+  final Map<String, Marker> _markers = {};
 
-  void _onMapCreated(GoogleMapController controller) {
+  Future<void> _onMapCreated(GoogleMapController controller) async {
     mapController = controller;
+
+    final googleOffices = await locations.getGoogleOffices();
+
+    setState(() {
+      _markers.clear();
+      for (final office in googleOffices.offices) {
+        final marker = Marker(
+          markerId: MarkerId(office.name),
+          position: LatLng(office.lat, office.lng),
+          infoWindow: InfoWindow(
+            title: office.name,
+            snippet: office.address,
+          ),
+        );
+        _markers[office.name] = marker;
+      }
+    });
   }
 
   @override
@@ -90,6 +108,7 @@ class _MyHomePageState extends State<MyHomePage> {
           target: _center,
           zoom: 11.0,
         ),
+        markers: _markers.values.toSet(),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
