@@ -124,20 +124,18 @@ class _MyHomePageState extends State<MyHomePage> {
         children: [
           ElevatedButton(
               onPressed: () => {
-                    Navigator.push(
-                        context, MaterialPageRoute(builder: (context) => TakePictureScreen(camera: widget.camera)))
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => LocationPage())),
                   },
               child: const Text('Start')),
-          const Expanded(
-            child: Text('Hello world'),
-            /*GoogleMap(
+          Expanded(
+            child: GoogleMap(
               onMapCreated: _onMapCreated,
               initialCameraPosition: CameraPosition(
                 target: _center,
                 zoom: 11.0,
               ),
               markers: _markers.values.toSet(),
-            ),*/
+            ),
           ),
         ],
       ),
@@ -242,7 +240,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
             );
           } catch (e) {
             // If an error occurs, log the error to the console.
-            print(e);
+            debugPrint(e.toString());
           }
         },
         child: const Icon(Icons.camera_alt),
@@ -264,6 +262,33 @@ class DisplayPictureScreen extends StatelessWidget {
       // The image is stored as a file on the device. Use the `Image.file`
       // constructor with the given path to display the image.
       body: Image.file(File(imagePath)),
+    );
+  }
+}
+
+class LocationPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Location Page")),
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('LAT: '),
+              const Text('LNG: '),
+              const Text('ADDRESS: '),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () {},
+                child: const Text("Get Current Location"),
+              )
+            ],
+          ),
+        ),
+      ),
+      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
     );
   }
 }
