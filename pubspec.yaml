@@ -40,6 +40,7 @@ dependencies:
   json_serializable: ^6.7.1
   json_annotation: ^4.8.1
   camera: ^0.10.5+2
+  geolocator: ^10.0.0
 
 dev_dependencies:
   flutter_test:

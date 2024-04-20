@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'locations.dart' as locations;
 
@@ -79,6 +80,68 @@ class _MyHomePageState extends State<MyHomePage> {
   final LatLng _center = const LatLng(-27.242426, 153.016637);
   final Map<String, Marker> _markers = {};
 
+  /// Determine the current position of the device.
+  ///
+  /// @date	Saturday 20-Apr-2024 1:40 pm, Starbucks Odaiba
+  ///
+  /// When the location services are not enabled or permissions
+  /// are denied the `Future` will return an error.
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Location services are not enabled don't continue
+      // accessing the position and request users of the
+      // App to enable the location services.
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        // Permissions are denied, next time you could try
+        // requesting permissions again (this is also where
+        // Android's shouldShowRequestPermissionRationale
+        // returned true. According to Android guidelines
+        // your App should show an explanatory UI now.
+        return Future.error('Location permissions are denied');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      // Permissions are denied forever, handle appropriately.
+      return Future.error('Location permissions are permanently denied, we cannot request permissions.');
+    }
+
+    // When we reach here, permissions are granted and we can
+    // continue accessing the position of the device.
+    Position position = await Geolocator.getCurrentPosition();
+
+    LatLng newlatlang = LatLng(position.latitude, position.longitude);
+    mapController.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: newlatlang, zoom: 17)
+        //17 is new zoom level
+        ));
+
+    setState(() {
+      final marker = Marker(
+        markerId: const MarkerId('MyLocation'),
+        position: LatLng(position.latitude, position.longitude),
+        infoWindow: const InfoWindow(
+          title: 'My Location',
+          snippet: 'In the park',
+        ),
+      );
+
+      _markers['MyLocation'] = marker;
+    });
+
+    return position;
+  }
+
   Future<void> _onMapCreated(GoogleMapController controller) async {
     mapController = controller;
 
@@ -98,6 +161,8 @@ class _MyHomePageState extends State<MyHomePage> {
         _markers[office.name] = marker;
       }
     });
+
+    _determinePosition();
   }
 
   @override
@@ -124,7 +189,7 @@ class _MyHomePageState extends State<MyHomePage> {
         children: [
           ElevatedButton(
               onPressed: () => {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => LocationPage())),
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const LocationPage())),
                   },
               child: const Text('Start')),
           Expanded(
@@ -267,6 +332,8 @@ class DisplayPictureScreen extends StatelessWidget {
 }
 
 class LocationPage extends StatelessWidget {
+  const LocationPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
