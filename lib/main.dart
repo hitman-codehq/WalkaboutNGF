@@ -1,9 +1,12 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'photo_manager.dart';
 
 void main() async {
   // Ensure that plugin services are initialized so that `availableCameras()`
@@ -247,6 +250,8 @@ class TakePictureScreenState extends State<TakePictureScreen> {
       floatingActionButton: FloatingActionButton(
         // Provide an onPressed callback.
         onPressed: () async {
+          final navigator = Navigator.of(context);
+
           // Take the Picture in a try / catch block. If anything goes wrong,
           // catch the error.
           try {
@@ -257,23 +262,31 @@ class TakePictureScreenState extends State<TakePictureScreen> {
             // where the image file is saved.
             final image = await _controller.takePicture();
 
-            if (!mounted) return;
+            late final Uint8List imageData;
 
             if (kIsWeb) {
-              Navigator.pop(context);
+              try {
+                final response = await http.get(Uri.parse(image.path));
 
-              return;
+                if (response.statusCode == 200) {
+                  imageData = response.bodyBytes;
+                  savePhoto(imageData);
+                } else {
+                  debugPrint("Failed to fetch image data. Status code: ${response.statusCode}");
+                }
+              } catch (e) {
+                debugPrint("Error fetching blob data: $e");
+
+                return;
+              }
+            } else {
+              imageData = await File(image.path).readAsBytes();
+              savePhoto(imageData);
             }
 
-            await Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => DisplayPictureScreen(
-                  // Pass the automatically generated path to
-                  // the DisplayPictureScreen widget.
-                  imagePath: image.path,
-                ),
-              ),
-            );
+            if (!mounted) return;
+
+            await navigator.push(MaterialPageRoute(builder: (context) => DisplayPictureScreen(imageData: imageData)));
           } catch (e) {
             // If an error occurs, log the error to the console.
             debugPrint(e.toString());
@@ -287,17 +300,15 @@ class TakePictureScreenState extends State<TakePictureScreen> {
 
 // A widget that displays the picture taken by the user.
 class DisplayPictureScreen extends StatelessWidget {
-  final String imagePath;
+  final Uint8List imageData;
 
-  const DisplayPictureScreen({super.key, required this.imagePath});
+  const DisplayPictureScreen({super.key, required this.imageData});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Display the picture')),
-      // The image is stored as a file on the device. Use the `Image.file`
-      // constructor with the given path to display the image.
-      body: Image.file(File(imagePath)),
+      body: Image.memory(imageData),
     );
   }
 }
