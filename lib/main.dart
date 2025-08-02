@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'locations.dart' as locations;
 
 void main() async {
   // Ensure that plugin services are initialized so that `availableCameras()`
@@ -122,18 +121,18 @@ class _MyHomePageState extends State<MyHomePage> {
     Position position = await Geolocator.getCurrentPosition();
 
     LatLng newlatlang = LatLng(position.latitude, position.longitude);
-    mapController.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: newlatlang, zoom: 17)
+    mapController.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: newlatlang, zoom: 17),
         //17 is new zoom level
-        ));
+      ),
+    );
 
     setState(() {
       final marker = Marker(
         markerId: const MarkerId('MyLocation'),
         position: LatLng(position.latitude, position.longitude),
-        infoWindow: const InfoWindow(
-          title: 'My Location',
-          snippet: 'In the park',
-        ),
+        infoWindow: const InfoWindow(title: 'My Location', snippet: 'In the park'),
       );
 
       _markers['MyLocation'] = marker;
@@ -144,23 +143,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _onMapCreated(GoogleMapController controller) async {
     mapController = controller;
-
-    final googleOffices = await locations.getGoogleOffices();
-
-    setState(() {
-      _markers.clear();
-      for (final office in googleOffices.offices) {
-        final marker = Marker(
-          markerId: MarkerId(office.name),
-          position: LatLng(office.lat, office.lng),
-          infoWindow: InfoWindow(
-            title: office.name,
-            snippet: office.address,
-          ),
-        );
-        _markers[office.name] = marker;
-      }
-    });
 
     _determinePosition();
   }
@@ -188,17 +170,13 @@ class _MyHomePageState extends State<MyHomePage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ElevatedButton(
-              onPressed: () => {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const LocationPage())),
-                  },
-              child: const Text('Start')),
+            onPressed: () => {Navigator.push(context, MaterialPageRoute(builder: (context) => const LocationPage()))},
+            child: const Text('Start'),
+          ),
           Expanded(
             child: GoogleMap(
               onMapCreated: _onMapCreated,
-              initialCameraPosition: CameraPosition(
-                target: _center,
-                zoom: 11.0,
-              ),
+              initialCameraPosition: CameraPosition(target: _center, zoom: 11.0),
               markers: _markers.values.toSet(),
             ),
           ),
@@ -207,7 +185,7 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.camera_alt),
         onPressed: () => {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => TakePictureScreen(camera: widget.camera)))
+          Navigator.push(context, MaterialPageRoute(builder: (context) => TakePictureScreen(camera: widget.camera))),
         },
       ),
     );
@@ -216,10 +194,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
 // A screen that allows users to take a picture using a given camera.
 class TakePictureScreen extends StatefulWidget {
-  const TakePictureScreen({
-    super.key,
-    required this.camera,
-  });
+  const TakePictureScreen({super.key, required this.camera});
 
   final CameraDescription camera;
 
@@ -347,10 +322,7 @@ class LocationPage extends StatelessWidget {
               const Text('LNG: '),
               const Text('ADDRESS: '),
               const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () {},
-                child: const Text("Get Current Location"),
-              )
+              ElevatedButton(onPressed: () {}, child: const Text("Get Current Location")),
             ],
           ),
         ),
