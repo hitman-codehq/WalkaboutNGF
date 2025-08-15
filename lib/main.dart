@@ -169,10 +169,6 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ElevatedButton(
-            onPressed: () => {Navigator.push(context, MaterialPageRoute(builder: (context) => const LocationPage()))},
-            child: const Text('Start'),
-          ),
           Expanded(
             child: GoogleMap(
               onMapCreated: _onMapCreated,
@@ -302,32 +298,6 @@ class DisplayPictureScreen extends StatelessWidget {
       // The image is stored as a file on the device. Use the `Image.file`
       // constructor with the given path to display the image.
       body: Image.file(File(imagePath)),
-    );
-  }
-}
-
-class LocationPage extends StatelessWidget {
-  const LocationPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Location Page")),
-      body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text('LAT: '),
-              const Text('LNG: '),
-              const Text('ADDRESS: '),
-              const SizedBox(height: 32),
-              ElevatedButton(onPressed: () {}, child: const Text("Get Current Location")),
-            ],
-          ),
-        ),
-      ),
-      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
     );
   }
 }
