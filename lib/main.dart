@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -77,10 +78,29 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  late BitmapDescriptor customIcon;
   late GoogleMapController mapController;
 
   final LatLng _center = const LatLng(-27.242426, 153.016637);
   final Map<String, Marker> _markers = {};
+
+  // Written: Tuesday 19-Aug-2025 11:07 am, Blu Shaak Coffee Paledecz, Haeundae Beach, Busan, South Korea
+
+  Future<BitmapDescriptor> _getCustomMarkerIcon() async {
+    try {
+      // Load the custom marker image from assets
+      final ByteData byteData = await rootBundle.load('assets/location.png');
+      final Uint8List bytes = byteData.buffer.asUint8List();
+
+      // Create a bitmap descriptor from the loaded bytes
+      return BitmapDescriptor.fromBytes(bytes, size: const Size(16, 16));
+    } catch (e) {
+      debugPrint('Error loading custom marker: $e');
+
+      // Fall back to default marker if there's an error
+      return BitmapDescriptor.defaultMarker;
+    }
+  }
 
   /// Determine the current position of the device.
   ///
@@ -136,6 +156,7 @@ class _MyHomePageState extends State<MyHomePage> {
         markerId: const MarkerId('MyLocation'),
         position: LatLng(position.latitude, position.longitude),
         infoWindow: const InfoWindow(title: 'My Location', snippet: 'In the park'),
+        icon: customIcon,
       );
 
       _markers['MyLocation'] = marker;
@@ -147,6 +168,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _onMapCreated(GoogleMapController controller) async {
     mapController = controller;
 
+    customIcon = await _getCustomMarkerIcon();
     _determinePosition();
   }
 
