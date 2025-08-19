@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
@@ -80,11 +81,13 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   late BitmapDescriptor customIcon;
   late GoogleMapController mapController;
+  StreamSubscription<Position>? _positionStreamSubscription;
+  bool _isTracking = false;
 
   final LatLng _center = const LatLng(-27.242426, 153.016637);
   final Map<String, Marker> _markers = {};
 
-  // Written: Tuesday 19-Aug-2025 11:07 am, Blu Shaak Coffee Paledecz, Haeundae Beach, Busan, South Korea
+  // @date Tuesday 19-Aug-2025 11:07 am, Blu Shaak Coffee Paledecz, Haeundae Beach, Busan, South Korea
 
   Future<BitmapDescriptor> _getCustomMarkerIcon() async {
     try {
@@ -102,13 +105,18 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  /// Determine the current position of the device.
+  /// Start positioning and determine the current position of the device.
+  ///
+  /// This function should be called at startup, to set up location services and to determine the current
+  /// position of the device.
+  ///
+  /// If the location services are not enabled or permissions are denied, the function will return an error.
   ///
   /// @date	Saturday 20-Apr-2024 1:40 pm, Starbucks Odaiba
+  /// @return	  The position of the device, if successful, else an error
   ///
-  /// When the location services are not enabled or permissions
-  /// are denied the `Future` will return an error.
-  Future<Position> _determinePosition() async {
+
+  Future<Position> _startPositioning() async {
     bool serviceEnabled;
     LocationPermission permission;
 
@@ -141,36 +149,93 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // When we reach here, permissions are granted and we can
     // continue accessing the position of the device.
-    Position position = await Geolocator.getCurrentPosition();
+    return await Geolocator.getCurrentPosition();
+  }
 
-    LatLng newlatlang = LatLng(position.latitude, position.longitude);
-    mapController.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: newlatlang, zoom: 17),
-        //17 is new zoom level
-      ),
-    );
+  /// Update the map and the location marker to the given position
+  ///
+  /// This function is called either when the position of the device changes, or when the user wishes to
+  /// move the map to a given position, such as centring on the current position or a PoI.
+  ///
+  /// @date Tuesday 19-Aug-2025 4:02 pm
+  /// @param  position The position to which to move the map
+  /// @return An empty Future is returned, to enable asynchronous updating
+  ///
+
+  Future<void> _updatePosition(Position position) async {
+    final newLatLng = LatLng(position.latitude, position.longitude);
+
+    // Update camera position to the new latitude and longitude
+    mapController.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: newLatLng, zoom: 17)));
 
     setState(() {
-      final marker = Marker(
+      _markers['MyLocation'] = Marker(
         markerId: const MarkerId('MyLocation'),
-        position: LatLng(position.latitude, position.longitude),
-        infoWindow: const InfoWindow(title: 'My Location', snippet: 'In the park'),
+        position: newLatLng,
+        infoWindow: InfoWindow(
+          title: 'My Location',
+          snippet: '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}',
+        ),
         icon: customIcon,
       );
-
-      _markers['MyLocation'] = marker;
     });
-
-    return position;
   }
 
   Future<void> _onMapCreated(GoogleMapController controller) async {
     mapController = controller;
 
     customIcon = await _getCustomMarkerIcon();
-    _determinePosition();
+
+    // Initialise location subsystem and get the initial position
+    try {
+      final _ = await _startPositioning();
+      _startTracking();
+    } catch (e) {
+      debugPrint('Error getting location: $e');
+    }
   }
+
+  // @date Tuesday 19-Aug-2025 4:02 pm
+  @override
+  void dispose() {
+    _positionStreamSubscription?.cancel();
+    mapController.dispose();
+    super.dispose();
+  }
+
+  /// Start tracking the user's position.
+  ///
+  /// Sets up the location subsystem to listen for position updates and, when received, calls _updatePosition()
+  /// to move the map and position marker to the new position.
+  ///
+  /// @date Tuesday 19-Aug-2025 4:02 pm
+  ///
+
+  void _startTracking() {
+    if (_isTracking) return;
+
+    _isTracking = true;
+
+    // Use high accuracy and update every 5 metres
+    const locationSettings = LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 5);
+
+    // Rather than just getting the current position, listen to a stream of position updates, so that
+    // we can update the map as the device moves
+    _positionStreamSubscription = Geolocator.getPositionStream(locationSettings: locationSettings).listen((
+      Position? position,
+    ) {
+      if (position != null) {
+        _updatePosition(position);
+      }
+    });
+  }
+
+  // Method kept for future use if needed
+  // @date Tuesday 19-Aug-2025 4:02 pm
+  // void _stopTracking() {
+  //   _positionStreamSubscription?.cancel();
+  //   _isTracking = false;
+  // }
 
   @override
   Widget build(BuildContext context) {
