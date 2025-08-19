@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
@@ -80,6 +81,8 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   late BitmapDescriptor customIcon;
   late GoogleMapController mapController;
+  StreamSubscription<Position>? _positionStreamSubscription;
+  bool _isTracking = false;
 
   final LatLng _center = const LatLng(-27.242426, 153.016637);
   final Map<String, Marker> _markers = {};
@@ -141,36 +144,83 @@ class _MyHomePageState extends State<MyHomePage> {
 
     // When we reach here, permissions are granted and we can
     // continue accessing the position of the device.
-    Position position = await Geolocator.getCurrentPosition();
+    return await Geolocator.getCurrentPosition();
+  }
 
-    LatLng newlatlang = LatLng(position.latitude, position.longitude);
-    mapController.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: newlatlang, zoom: 17),
-        //17 is new zoom level
-      ),
-    );
+  // Tuesday 19-Aug-2025 4:02 pm
+  Future<void> _updatePosition(Position position) async {
+    final newLatLng = LatLng(position.latitude, position.longitude);
+
+    // Update camera position
+    mapController.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: newLatLng, zoom: 17)));
 
     setState(() {
-      final marker = Marker(
+      _markers['MyLocation'] = Marker(
         markerId: const MarkerId('MyLocation'),
-        position: LatLng(position.latitude, position.longitude),
-        infoWindow: const InfoWindow(title: 'My Location', snippet: 'In the park'),
+        position: newLatLng,
+        infoWindow: InfoWindow(
+          title: 'My Location',
+          snippet: '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}',
+        ),
         icon: customIcon,
       );
-
-      _markers['MyLocation'] = marker;
     });
-
-    return position;
   }
 
   Future<void> _onMapCreated(GoogleMapController controller) async {
     mapController = controller;
 
     customIcon = await _getCustomMarkerIcon();
-    _determinePosition();
+
+    // Get initial position
+    try {
+      final position = await _determinePosition();
+      await _updatePosition(position);
+    } catch (e) {
+      debugPrint('Error getting location: $e');
+      // You might want to show an error message to the user here
+    }
   }
+
+  // Tuesday 19-Aug-2025 4:02 pm - less 20 minutes?
+  @override
+  void initState() {
+    super.initState();
+    _startTracking();
+  }
+
+  // Tuesday 19-Aug-2025 4:02 pm
+  @override
+  void dispose() {
+    _positionStreamSubscription?.cancel();
+    mapController.dispose();
+    super.dispose();
+  }
+
+  // Tuesday 19-Aug-2025 4:02 pm
+  void _startTracking() {
+    if (_isTracking) return;
+
+    _isTracking = true;
+    const locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 10, // Update every 10 meters
+    );
+
+    _positionStreamSubscription = Geolocator.getPositionStream(locationSettings: locationSettings).listen((
+      Position? position,
+    ) {
+      if (position != null) {
+        _updatePosition(position);
+      }
+    });
+  }
+
+  // Method kept for future use if needed
+  // void _stopTracking() {
+  //   _positionStreamSubscription?.cancel();
+  //   _isTracking = false;
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -203,11 +253,30 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.camera_alt),
-        onPressed: () => {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => TakePictureScreen(camera: widget.camera))),
-        },
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'location_button',
+            onPressed: () {
+              // Center the map on current location
+              if (_markers.containsKey('MyLocation')) {
+                final position = _markers['MyLocation']!.position;
+                mapController.animateCamera(CameraUpdate.newCameraPosition(CameraPosition(target: position, zoom: 17)));
+              }
+            },
+            child: const Icon(Icons.my_location),
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton(
+            heroTag: 'camera_button',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => TakePictureScreen(camera: widget.camera)),
+            ),
+            child: const Icon(Icons.camera_alt),
+          ),
+        ],
       ),
     );
   }

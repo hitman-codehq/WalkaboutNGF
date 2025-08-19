@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.example.walkaboutngf"
-    compileSdk = 35 // flutter.compileSdkVersion // TODO: CAW
+    compileSdk = 36 // flutter.compileSdkVersion // TODO: CAW
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
